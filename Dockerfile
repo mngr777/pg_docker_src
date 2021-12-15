@@ -21,8 +21,13 @@ RUN set -ex \
     libxslt-dev \
     libssl-dev \
     libxml2-utils \
-    xsltproc
+    xsltproc \
+# PostGIS and dependencies
+    curl \
+    libboost-all-dev \
 # gdb
+    gdb \
+    gdbserver
 
 # grab gosu for easy step-down from root
 # (required by docker-entrypoint)
@@ -47,6 +52,9 @@ RUN set -eux; \
 	chmod +x /usr/local/bin/gosu; \
 	gosu --version; \
 	gosu nobody true
+
+# --------------------
+# PostgreSQL
 
 # Build PostgreSQL
 RUN mkdir /root/postgres
@@ -74,6 +82,124 @@ RUN mkdir -p /var/run/postgresql && chown -R postgres:postgres /var/run/postgres
 ENV PGDATA /var/lib/postgresql/data
 RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 777 "$PGDATA"
 VOLUME /var/lib/postgresql/data
+
+# --------------------
+# PostGIS
+
+# !!
+RUN apt-get update && apt-get install -y git cmake
+RUN apt-get install -y libcgal-dev
+
+# sfcgal
+ENV SFCGAL_VERSION master
+#current:
+#ENV SFCGAL_GIT_HASH b1646552e77acccce74b26686a2e048a74caacb7
+#reverted for the last working version
+ENV SFCGAL_GIT_HASH e1f5cd801f8796ddb442c06c11ce8c30a7eed2c5
+
+RUN set -ex \
+    && mkdir -p /usr/src \
+    && cd /usr/src \
+    && git clone https://gitlab.com/Oslandia/SFCGAL.git \
+    && cd SFCGAL \
+    && git checkout ${SFCGAL_GIT_HASH} \
+    && mkdir cmake-build \
+    && cd cmake-build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd / \
+    && rm -fr /usr/src/SFCGAL
+
+# !!
+RUN apt-get update && apt-get install -y autoconf \
+  automake \
+  autotools-dev \
+  libtool \
+  libsqlite3-dev \
+  sqlite3 \
+  libtiff-dev \
+  libcurl4-gnutls-dev \
+  pkg-config
+
+# proj
+ENV PROJ_VERSION master
+ENV PROJ_GIT_HASH ac882266b57d04720bb645b8144901127f7427cf
+
+RUN set -ex \
+    && cd /usr/src \
+    && git clone https://github.com/OSGeo/PROJ.git \
+    && cd PROJ \
+    && git checkout ${PROJ_GIT_HASH} \
+    && ./autogen.sh \
+    && ./configure --disable-static \
+    && make -j$(nproc) \
+    && make install \
+    && cd / \
+    && rm -fr /usr/src/PROJ
+
+# gdal
+ENV GDAL_VERSION master
+ENV GDAL_GIT_HASH ab147114c2f1387447c3efc1a7ac7dfc3d7bad9a
+
+RUN set -ex \
+    && cd /usr/src \
+    && git clone https://github.com/OSGeo/gdal.git \
+    && cd gdal \
+    && git checkout ${GDAL_GIT_HASH} \
+    \
+    # gdal project directory structure - has been changed !
+    && if [ -d "gdal" ] ; then \
+        echo "Directory 'gdal' dir exists -> older version!" ; \
+        cd gdal ; \
+    else \
+        echo "Directory 'gdal' does not exists! Newer version! " ; \
+    fi \
+    \
+    && ./autogen.sh \
+    && ./configure --disable-static \
+    && make -j$(nproc) \
+    && make install \
+    && cd / \
+    && rm -fr /usr/src/gdal
+
+# GEOS
+RUN mkdir /root/geos
+COPY ./geos /root/geos
+RUN set -ex \
+    && cd /root/geos \
+    && mkdir cmake-build \
+    && cd cmake-build \
+    && cmake -DCMAKE_BUILD_TYPE=Debug .. \
+    && make -j$(nproc) \
+    && make install
+
+# Minimal command line test.
+RUN set -ex \
+    && ldconfig \
+    && cs2cs \
+    && gdalinfo --version \
+    && geos-config --version \
+    && ogr2ogr --version \
+    && proj \
+    && sfcgal-config --version
+
+# !!
+RUN apt-get update && apt-get install -y \
+  libprotobuf-c1 \
+  libprotobuf-c-dev \
+  protobuf-c-compiler
+
+# PostGIS
+RUN mkdir /root/postgis
+COPY --chown=root:root ./postgis /root/postgis
+RUN cd /root/postgis \
+    && ./autogen.sh \
+    && CFLAGS='-Wall -Wextra -Wformat -Werror=format-security -Wno-unused-parameter -Wno-implicit-fallthrough -Wno-unknown-warning-option -Wno-cast-function-type -fno-math-errno -fno-signed-zeros' ./configure \
+#       --with-gui \
+        --with-pcredir="$(pcre-config --prefix)" \
+    && make -j$(nproc) \
+    && make install
 
 # Set up entry point script
 ENV PATH $PATH:/usr/local/bin
