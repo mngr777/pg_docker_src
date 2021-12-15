@@ -3,6 +3,7 @@ services:
   postgres:
     build: .
     image: postgres-postgis-src-local-1
+    command: postgres -c listen_addresses='*'
     ports:
       - '5432:5432'
       - '2345:2345'
