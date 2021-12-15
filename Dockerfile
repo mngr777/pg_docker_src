@@ -165,7 +165,7 @@ RUN mkdir /root/postgres
 COPY ./postgres /root/postgres
 RUN set -ex \
   && cd /root/postgres \
-  && ./configure --enable-cassert --enable-debug CFLAGS="-ggdb -Og -g3 -fno-omit-frame-pointer" \
+  && ./configure --enable-cassert --enable-debug CFLAGS="-ggdb -O0 -g3 -fno-omit-frame-pointer" \
   && make \
   && make install
 
@@ -195,7 +195,7 @@ RUN mkdir /root/postgis
 COPY --chown=root:root ./postgis /root/postgis
 RUN cd /root/postgis \
     && ./autogen.sh \
-    && CFLAGS='-ggdb -Og -g3 -fno-omit-frame-pointer -Wall -Wextra -Wformat -Werror=format-security -Wno-unused-parameter -Wno-implicit-fallthrough -Wno-unknown-warning-option -Wno-cast-function-type -fno-math-errno -fno-signed-zeros' ./configure \
+    && CFLAGS='-ggdb -O0 -g3 -fno-omit-frame-pointer -Wall -Wextra -Wformat -Werror=format-security -Wno-unused-parameter -Wno-implicit-fallthrough -Wno-unknown-warning-option -Wno-cast-function-type -fno-math-errno -fno-signed-zeros' ./configure \
 #       --with-gui \
         --with-pcredir="$(pcre-config --prefix)" \
     && make -j$(nproc) \
@@ -203,9 +203,11 @@ RUN cd /root/postgis \
 
 # Set up entry point script
 ENV PATH $PATH:/usr/local/bin
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh; \
-  mkdir /docker-entrypoint-initdb.d
+RUN mkdir -p /docker-entrypoint-initdb.d
+COPY ./docker-entrypoint.sh /usr/local/bin/
+COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 STOPSIGNAL SIGINT

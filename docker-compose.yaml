@@ -8,9 +8,10 @@ services:
       - '5432:5432'
       - '2345:2345'
     cap_add:
-      - SYS_PTRACE
+      - ALL
     environment:
       POSTGRES_PASSWORD: 'password1'
+      POSTGRES_DB: 'test'
     volumes:
       - postgres:/var/lib/postgres/data
 volumes:
