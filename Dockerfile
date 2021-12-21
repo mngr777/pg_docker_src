@@ -131,6 +131,13 @@ RUN set -ex \
     && sfcgal-config --version
 
 
+# Clone gevel
+# NOTE: gosu install breaks certificate checking
+# TODO
+RUN set -ex \
+  && cd /root \
+  && git clone https://github.com/pramsey/gevel.git
+
 # --------------------
 # grab gosu for easy step-down from root
 # (required by docker-entrypoint)
@@ -201,11 +208,20 @@ RUN cd /root/postgis \
     && make -j$(nproc) \
     && make install
 
+# --------------------
+# Install gevel
+RUN set -ex \
+  && cd /root/gevel \
+  && cp expected/gevel.out.14 expected/gevel.out.15 \
+  && make \
+  && make install
+
 # Set up entry point script
 ENV PATH $PATH:/usr/local/bin
 RUN mkdir -p /docker-entrypoint-initdb.d
 COPY ./docker-entrypoint.sh /usr/local/bin/
 COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
+COPY ./gevel-init.sh /docker-entrypoint-initdb.d/20_gevel.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 
