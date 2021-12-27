@@ -174,6 +174,10 @@ RUN set -ex \
   && cd /root/postgres \
   && ./configure --enable-cassert --enable-debug CFLAGS="-ggdb -O0 -g3 -fno-omit-frame-pointer" \
   && make \
+  && make install \
+# install contrib
+  && cd /root/postgres/contrib \
+  && make \
   && make install
 
 # update PATH
