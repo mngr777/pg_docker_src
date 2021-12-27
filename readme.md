@@ -1,3 +1,6 @@
+# Description
+Builds GEOS, PostgreSQL, PostGIS from local source, installs gdb, builds and install gevel, creates "test" database with (some) PostGIS extensions installed.
+
 # Usage
 
 * Clone repository
