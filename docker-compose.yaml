@@ -2,11 +2,10 @@ version: '2'
 services:
   postgres:
     build: .
-    image: postgres-postgis-src-local-1
+    image: postgres-postgis-src-local-2
     command: postgres -c listen_addresses='*'
     ports:
-      - '5432:5432'
-      - '2345:2345'
+      - '5431:5432'
     cap_add:
       - ALL
     environment:
