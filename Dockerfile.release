@@ -26,7 +26,7 @@ RUN set -ex \
     curl \
     libboost-all-dev \
     git \
-    cmake \
+    # cmake \
     libcgal-dev \
     autoconf \
     automake \
@@ -40,9 +40,24 @@ RUN set -ex \
     libprotobuf-c1 \
     libprotobuf-c-dev \
     protobuf-c-compiler \
+    clang-format \
 # gdb
     gdb \
-    gdbserver
+    gdbserver \
+# cmake
+    gpg \
+    lsb-release \
+    software-properties-common
+
+# Add Kitware, install cmake
+RUN apt-get install -y wget \
+    && wget --no-check-certificate -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null \
+    && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
+    && apt-get update \
+    && apt-get install kitware-archive-keyring \
+    && rm /etc/apt/trusted.gpg.d/kitware.gpg \
+    && apt-get update \
+    && apt-get install -y cmake
 
 # --------------------
 # PostGIS dependencies
@@ -228,6 +243,19 @@ RUN set -ex \
   && cp expected/gevel.out.14 expected/gevel.out.15 \
   && make \
   && make install
+
+# --------------------
+# Install h3
+# RUN mkdir /root/h3
+# COPY --chown=root:root ./h3 /root/h3
+
+# Install h3-pg
+# RUN mkdir /root/h3-pg
+# COPY ./h3-pg /root/h3-pg
+# #COPY ./h3-pg.patch /root/h3-pg/h3-pg.patch
+# RUN cd /root/h3-pg \
+#   && CFLAGS='-ggdb -O0 -g3 -fno-omit-frame-pointer' LIBH3_CMAKE_C_FLAGS='-ggdb -g3 -O0 -fno-omit-frame-pointer' make \
+#   && make install
 
 # Set up entry point script
 ENV PATH $PATH:/usr/local/bin
